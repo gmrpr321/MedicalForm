@@ -25,10 +25,6 @@ class ParentModel(models.Model):
     mother_email = models.EmailField(max_length=200, default="")
 
 
-from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-
-
 class MarkModel(models.Model):
     board_choices = [
         ("State", "State"),
@@ -132,6 +128,7 @@ class StudentModel(models.Model):
     serial_no = models.CharField(max_length=500, default="")
     email = models.CharField(max_length=500, primary_key=True)
     date_of_joining = models.DateField(default=None, null=True)
+    date_of_admission = models.DateField(default=None, null=True)
     admission_no = models.CharField(max_length=500, default="")
     ar_number = models.CharField(max_length=200, default="")
     allotment_date = models.DateField(default=None, null=True)
