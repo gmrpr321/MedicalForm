@@ -8,65 +8,33 @@ from django.contrib.auth.models import User
 class ApplicationMarkSerializer(serializers.ModelSerializer):
     class Meta:
         model = MarkModel
-        fields = [""]
+        fields = "__all__"
 
 
 class ApplicationParentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParentModel
-        fields = [
-            "father_name",
-            "father_occupation",
-            "father_occupation_address",
-            "father_phone_number",
-            "father_email",
-            "mother_name",
-            "mother_occupation",
-            "mother_occupation_address",
-            "mother_email",
-            "mother_phone_number",
-        ]
+        fields = "__all__"
 
 
 class ApplicationContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactModel
-        fields = [
-            "student_contact_no",
-            "student_email_id",
-            "mobile_1",
-            "mobile_2",
-            "mobile_3",
-            "guardian_mobile",
-        ]
+        fields = "__all__"
 
 
 class ApplicationStudentSerializer(serializers.ModelSerializer):
-    markSerializer = ApplicationMarkSerializer(many=False)
-    contactSerializer = ApplicationContactSerializer(many=False)
-    parentSerializer = ApplicationParentSerializer(many=False)
-
     class Meta:
         model = StudentModel
-        fields = [
-            "student_name",
-            "email",
-            "course",
-            "quota",
-            "date_of_birth",
-            "gender",
-            "is_hostellite",
-            "community",
-            "religion",
-            "native_place",
-            "blood_group",
-            "height",
-            "weight",
-            "date_of_admission",
-            "mother_tongue",
-            "address_for_communication",
-            "address_local_guardian",
-        ]
+        fields = "__all__"
+
+    def get_user(self, obj):
+        return obj.user.username
+
+    parent_info = ApplicationParentSerializer(many=False)
+    mark_info = ApplicationMarkSerializer(many=False)
+    contact_info = ApplicationContactSerializer(many=False)
+    user = serializers.SerializerMethodField()
 
     def create(self, validated_data):
         """
@@ -80,77 +48,142 @@ class ApplicationStudentSerializer(serializers.ModelSerializer):
         }
         """
         email = validated_data.pop("email")
-        student_data = validated_data.pop("student")
-        contact_data = validated_data.pop("contact")
-        mark_data = validated_data.pop("mark")
-        parent_data = validated_data.pop("parent")
+        contact_data = validated_data.pop("contact_info")
+        mark_data = validated_data.pop("mark_info")
+        parent_data = validated_data.pop("parent_info")
 
-        # User will always be present for this email
-        userInstance = User.objects.filter(email=email)[0]
-        if userInstance:
-            student = StudentModel.objects.filter(email=email).first()
+        contact_instance = ContactModel.objects.create(**contact_data)
+        mark_instance = MarkModel.objects.create(**mark_data)
+        parent_instance = ParentModel.objects.create(**parent_data)
+        user_instance = User.objects.get(email=email)
+        student_instance = StudentModel.objects.create(
+            email=email,
+            contact_info=contact_instance,
+            mark_info=mark_instance,
+            parent_info=parent_instance,
+            user=user_instance,
+            **validated_data
+        )
 
-            # create or update the related models of student
-            final_student = None
-            if student:
-                for key, value in student_data.items():
-                    setattr(student, key, value)
+        return student_instance
 
-                contact_instance = student.contact_info
-                mark_instance = student.mark_info
-                parent_instance = student.parent_info
+    def update(self, instance, validated_data):
+        contact_data = validated_data.pop("contact_info", {})
+        mark_data = validated_data.pop("mark_info", {})
+        parent_data = validated_data.pop("parent_info", {})
 
-                for key, value in contact_data.items():
-                    setattr(contact_instance, key, value)
-                    contact_instance.save()
+        contact_instance = instance.contact_info
+        if contact_data:
+            for key, value in contact_data.items():
+                setattr(contact_instance, key, value)
+            contact_instance.save()
 
-                for key, value in mark_data.items():
-                    setattr(mark_instance, key, value)
-                    mark_instance.save()
+        mark_instance = instance.mark_info
+        if mark_data:
+            for key, value in mark_data.items():
+                setattr(mark_instance, key, value)
+            mark_instance.save()
 
-                for key, value in parent_data.items():
-                    setattr(parent_instance, key, value)
-                    parent_instance.save()
+        parent_instance = instance.parent_info
+        if parent_data:
+            for key, value in parent_data.items():
+                setattr(parent_instance, key, value)
+            parent_instance.save()
 
-                student.save()
-                final_student = student
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.save()
 
-            else:
-                contact_instance = ContactModel.objects.create(**contact_data)
-                parent_instance = ParentModel.objects.create(**parent_data)
-                mark_instance = MarkModel.objects.create(**mark_data)
-                student_instance = StudentModel.objects.create(
-                    user=userInstance,
-                    contact_info=contact_instance,
-                    parent_info=parent_instance,
-                    mark_info=mark_instance,
-                    **student_data
-                )
-                final_student = student_instance
-
-            return final_student
+        return instance
 
 
 # Admission Serializers
 class AdmissionMarkSerializer(serializers.ModelSerializer):
     class Meta:
         model = MarkModel
-        fields = []
+        fields = "__all__"
 
 
 class AdmissionParentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParentModel
-        fields = []
+        fields = "__all__"
 
 
 class AdmissionContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactModel
-        fields = []
+        fields = "__all__"
 
 
 class AdmissionStudentSerializer(serializers.ModelSerializer):
+    mark_info = AdmissionMarkSerializer(many=False)
+    parent_info = AdmissionParentSerializer(many=False)
+    contact_info = AdmissionContactSerializer(many=False)
+    user = serializers.SerializerMethodField()
+
     class Meta:
         model = StudentModel
-        fields = []
+        fields = "__all__"
+
+    def get_user(self, obj):
+        return obj.user.username
+
+    def create(self, validated_data):
+        """
+        data format for Application student serializer
+        data = {
+        email = str
+        student = dict
+        contact = dict
+        mark = dict
+        parent = dict
+        }
+        """
+        email = validated_data.pop("email")
+        contact_data = validated_data.pop("contact_info")
+        mark_data = validated_data.pop("mark_info")
+        parent_data = validated_data.pop("parent_info")
+
+        contact_instance = ContactModel.objects.create(**contact_data)
+        mark_instance = MarkModel.objects.create(**mark_data)
+        parent_instance = ParentModel.objects.create(**parent_data)
+        user_instance = User.objects.get(email=email)
+        student_instance = StudentModel.objects.create(
+            email=email,
+            contact_info=contact_instance,
+            mark_info=mark_instance,
+            parent_info=parent_instance,
+            user=user_instance,
+            **validated_data
+        )
+        return student_instance
+
+    def update(self, instance, validated_data):
+        contact_data = validated_data.pop("contact_info", {})
+        mark_data = validated_data.pop("mark_info", {})
+        parent_data = validated_data.pop("parent_info", {})
+
+        contact_instance = instance.contact_info
+        if contact_data:
+            for key, value in contact_data.items():
+                setattr(contact_instance, key, value)
+            contact_instance.save()
+
+        mark_instance = instance.mark_info
+        if mark_data:
+            for key, value in mark_data.items():
+                setattr(mark_instance, key, value)
+            mark_instance.save()
+
+        parent_instance = instance.parent_info
+        if parent_data:
+            for key, value in parent_data.items():
+                setattr(parent_instance, key, value)
+            parent_instance.save()
+
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.save()
+
+        return instance
