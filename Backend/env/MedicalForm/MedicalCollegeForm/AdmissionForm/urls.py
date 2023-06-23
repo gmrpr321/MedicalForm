@@ -6,6 +6,9 @@ from .views import (
     AdmissionFormCreate,
     AdmissionFormRetrieve,
     AdmissionFormUpdate,
+    CreateUser,
+    LoginUser,
+    LogoutUser,
 )
 
 urlpatterns = [
@@ -39,4 +42,7 @@ urlpatterns = [
         AdmissionFormRetrieve.as_view(),
         name="admission-retrive",
     ),
+    path("user-create", CreateUser.as_view()),
+    path("user-login", LoginUser.as_view()),
+    path("user-logout", LogoutUser.as_view()),
 ]
