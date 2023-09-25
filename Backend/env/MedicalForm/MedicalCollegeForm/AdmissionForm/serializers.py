@@ -64,7 +64,6 @@ class ApplicationStudentSerializer(serializers.ModelSerializer):
             user=user_instance,
             **validated_data
         )
-
         return student_instance
 
     def update(self, instance, validated_data):
